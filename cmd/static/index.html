@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Inscribirse a un Curso</title>
+    <link rel="stylesheet" href="/static/style.css"> <!-- (opcional si movés estilos a un archivo) -->
     <style>
         body { font-family: Arial, sans-serif; padding: 20px; }
         h1 { font-size: 2em; }
@@ -15,10 +16,10 @@
 <body>
     <h1>Inscribirse a un Curso</h1>
 
-    <label for="curso">Seleccione un curso:</label>
+    <label for="cursoSelect">Seleccione un curso:</label>
     <select id="cursoSelect"></select>
 
-    <label for="cuil">Ingrese CUIL:</label>
+    <label for="cuilInput">Ingrese CUIL:</label>
     <input type="text" id="cuilInput" placeholder="Ej: 20234567890" />
 
     <button onclick="inscribirPersona()">Inscribir</button>
@@ -37,65 +38,77 @@
         <tbody></tbody>
     </table>
 
+    <script src="/static/script.js"></script> <!-- si movés el JS -->
     <script>
         let cursos = [];
 
         async function cargarCursos() {
-            const res = await fetch('/cursos');
-            cursos = await res.json();
-            const select = document.getElementById('cursoSelect');
-            cursos.forEach(curso => {
-                const option = document.createElement('option');
-                option.value = curso.id;
-                option.textContent = curso.nombre;
-                select.appendChild(option);
-            });
+            try {
+                const res = await fetch('/cursos');
+                cursos = await res.json();
+                const select = document.getElementById('cursoSelect');
+                cursos.forEach(curso => {
+                    const option = document.createElement('option');
+                    option.value = curso.id;
+                    option.textContent = curso.nombre;
+                    select.appendChild(option);
+                });
+            } catch (err) {
+                console.error('Error al cargar cursos:', err);
+            }
         }
 
         async function cargarInscriptos() {
-            const res = await fetch('/inscriptos');
-            const data = await res.json();
-            const tbody = document.querySelector('#tablaInscriptos tbody');
-            tbody.innerHTML = '';
+            try {
+                const res = await fetch('/inscriptos');
+                const data = await res.json();
+                const tbody = document.querySelector('#tablaInscriptos tbody');
+                tbody.innerHTML = '';
 
-            data.forEach(p => {
-                const curso = cursos.find(c => c.id === p.curso_id);
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${p.cuil}</td>
-                    <td>${p.nombre}</td>
-                    <td>${p.apellido}</td>
-                    <td>${p.email}</td>
-                    <td>${curso ? curso.nombre : 'Curso no encontrado'}</td>
-                `;
-                tbody.appendChild(row);
-            });
+                data.forEach(p => {
+                    const curso = cursos.find(c => c.id === p.curso_id);
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${p.cuil}</td>
+                        <td>${p.nombre}</td>
+                        <td>${p.apellido}</td>
+                        <td>${p.email}</td>
+                        <td>${curso ? curso.nombre : 'Curso no encontrado'}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (err) {
+                console.error('Error al cargar inscriptos:', err);
+            }
         }
 
         async function inscribirPersona() {
             const cuil = document.getElementById('cuilInput').value;
             const cursoID = document.getElementById('cursoSelect').value;
 
-            const res = await fetch('/inscribir-persona', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ cuil, curso_id: cursoID })
-            });
+            try {
+                const res = await fetch('/inscribir-persona', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cuil, curso_id: cursoID })
+                });
 
-            const result = await res.json();
+                const result = await res.json();
 
-            if (res.ok) {
-                alert(result.message);
-                cargarInscriptos();
-            } else {
-                alert(result.error || 'Ocurrió un error');
+                if (res.ok) {
+                    alert(result.message);
+                    cargarInscriptos();
+                } else {
+                    alert(result.error || 'Ocurrió un error');
+                }
+            } catch (err) {
+                alert('Error al inscribir persona');
+                console.error(err);
             }
         }
 
-        // Cargar cursos e inscriptos al inicio
-        cargarCursos().then(() => {
-            cargarInscriptos();
-        });
+        // Al iniciar
+        cargarCursos().then(cargarInscriptos);
     </script>
 </body>
 </html>
