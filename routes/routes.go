@@ -8,7 +8,7 @@ import (
 func RegisterRoutes(r *gin.Engine) {
     // 📌 Verificación de persona (consulta externa por CUIL)
     r.POST("/verificar-persona", controllers.VerificarPersona)
-
+    
     // 📝 Gestión de inscripciones manuales
     r.POST("/inscribir-persona", controllers.InscribirPersona)
     r.GET("/inscriptos", controllers.ObtenerInscritos)
