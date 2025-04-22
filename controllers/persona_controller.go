@@ -1,38 +1,32 @@
-	package controllers
+package controllers
 
-	import (
-		"net/http"
+import (
+	"net/http"
 
-		"github.com/gin-gonic/gin"
-		"gobierno-inscripcion/services"
-	)
+	"github.com/gin-gonic/gin"
+	"gobierno-inscripcion/services"
+)
 
-	type VerificacionRequest struct {
-		CUIL string `json:"cuil" binding:"required"`
+type VerificacionRequest struct {
+	Cuil string `json:"cuil"`
+}
+
+func BuscarPersonaHandler(c *gin.Context) {
+	var req VerificacionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Formato inválido de JSON"})
+		return
 	}
 
-	func VerificarPersona(c *gin.Context) {
-		var request VerificacionRequest
-
-		// Validar JSON de entrada
-		if err := c.ShouldBindJSON(&request); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "CUIL requerido en formato JSON"})
-			return
+	persona, err := services.ConsultarPersonaPorCUIL(req.Cuil)
+	if err != nil {
+		if err == services.ErrPersonaNoEncontrada {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Persona no encontrada"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		}
-
-		// Llamar al servicio
-		persona, err := services.ConsultarPersonaPorCUIL(request.CUIL)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error":   "No se pudo consultar la persona",
-				"detalle": err.Error(),
-			})
-			return
-		}
-
-		// Respuesta exitosa
-		c.JSON(http.StatusOK, gin.H{
-			"message": "Persona encontrada exitosamente",
-			"persona": persona,
-		})
+		return
 	}
+
+	c.JSON(http.StatusOK, persona)
+}
