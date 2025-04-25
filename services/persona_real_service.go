@@ -15,73 +15,68 @@ var ErrPersonaNoEncontrada = errors.New("persona no encontrada")
 
 // Persona representa los datos que vamos a devolver al cliente
 type Persona struct {
-	Nombre           string `json:"nombre"`
-	Apellido         string `json:"apellido"`
-	Cuil             string `json:"cuil"`
-	NumeroDoc        string `json:"numero_documento"`
-	TipoDoc          string `json:"tipo_documento"`
-	Sexo             string `json:"sexo"`
-	FechaNacimiento  string `json:"fecha_nacimiento"`
-	Provincia        string `json:"provincia"`
-	Localidad        string `json:"localidad"`
-	Direccion        string `json:"direccion"`
-	EstadoCivil      string `json:"estado_civil"`
+	Nombre          string `json:"nombre"`
+	Apellido        string `json:"apellido"`
+	Cuil            string `json:"cuil"`
+	NumeroDocumento string `json:"numero_documento"`
+	TipoDocumento   string `json:"tipo_documento"`
+	Sexo            string `json:"sexo"`
+	FechaNacimiento string `json:"fecha_nacimiento"`
+	Provincia       string `json:"provincia"`
+	Localidad       string `json:"localidad"`
+	Direccion       string `json:"direccion"`
+	EstadoCivil     string `json:"estado_civil"`
 }
 
-// Envelope mapea el sobre SOAP de respuesta
-type Envelope struct {
+// soapEnvelope mapea el sobre SOAP completo, incluyendo posible Fault
+type soapEnvelope struct {
 	XMLName xml.Name `xml:"Envelope"`
 	Body    struct {
-		BuscarPersonaFisicaResponse struct {
-			Return PersonaSOAP `xml:"return"`
-		} `xml:"buscarPersonaFisicaResponse"`
+		Persona personaData `xml:"Body>personaFisicaResponse"`
+		Fault   *soapFault  `xml:"Body>Fault"`
 	} `xml:"Body"`
 }
 
-// PersonaSOAP refleja la estructura interna del XML de respuesta
-type PersonaSOAP struct {
-	Nombre           string `xml:"nombre"`
-	Apellido         string `xml:"apellido"`
-	Cuil             string `xml:"cuil"`
-	NumeroDocumento  string `xml:"numeroDocumento"`
-	TipoDoc          string `xml:"idTipoDocumento"`
-	Sexo             struct {
+// personaData refleja los campos internos de personaFisicaResponse
+type personaData struct {
+	Nombre          string `xml:"nombre"`
+	Apellido        string `xml:"apellido"`
+	Cuil            string `xml:"cuil"`
+	NumeroDocumento string `xml:"numeroDocumento"`
+	TipoDocumento   string `xml:"idTipoDocumento"`
+	Sexo            struct {
 		TipoSexo string `xml:"tipoSexo"`
 	} `xml:"sexo"`
-	FechaNacimiento  string `xml:"fecNacimiento"`
-	Domicilio        struct {
-		Provincia  string `xml:"provincia"`
-		Localidad  string `xml:"localidad"`
-		Calle      string `xml:"calle"`
+	FechaNacimiento string `xml:"fecNacimiento"`
+	Domicilio struct {
+		Provincia string `xml:"provincia"`
+		Localidad string `xml:"localidad"`
+		Calle     string `xml:"calle"`
 	} `xml:"domicilio"`
-	EstadoCivil      struct {
+	EstadoCivil struct {
 		NombreEstadoCivil string `xml:"nombreEstadoCivil"`
 	} `xml:"estadoCivil"`
 }
 
-// FaultEnvelope para capturar faults de negocio
-type FaultEnvelope struct {
-	XMLName xml.Name `xml:"Envelope"`
-	Body    struct {
-		Fault struct {
-			FaultCode   string `xml:"faultcode"`
-			FaultString string `xml:"faultstring"`
-		} `xml:"Fault"`
-	} `xml:"Body"`
+// soapFault captura los faults de negocio del servicio SOAP
+type soapFault struct {
+	Code   string `xml:"faultcode"`
+	String string `xml:"faultstring"`
 }
 
 // ConsultarPersonaPorCUIL invoca el servicio SOAP de PersonaFisica por CUIL
 func ConsultarPersonaPorCUIL(cuil string) (*Persona, error) {
+	// Carga la configuración desde variables de entorno
 	endpoint := os.Getenv("SOAP_ENDPOINT")
 	usuario := os.Getenv("SOAP_USER")
 	password := os.Getenv("SOAP_PASSWORD")
-	usuarioHeader := os.Getenv("SOAP_USUARIO_HEADER")
-	aplicacionHeader := os.Getenv("SOAP_APLICACION_HEADER")
+	appUser := os.Getenv("SOAP_USUARIO_HEADER")
+	appName := os.Getenv("SOAP_APLICACION_HEADER")
 	useMock := os.Getenv("USE_MOCK")
 
 	// Validar configuración
-	if endpoint == "" || usuario == "" || password == "" || usuarioHeader == "" || aplicacionHeader == "" {
-		return nil, fmt.Errorf("falta configuración en variables de entorno")
+	if endpoint == "" || usuario == "" || password == "" || appUser == "" || appName == "" {
+		return nil, errors.New("falta configuración en variables de entorno")
 	}
 
 	// Modo mock para desarrollo
@@ -90,97 +85,91 @@ func ConsultarPersonaPorCUIL(cuil string) (*Persona, error) {
 			Nombre:          "Juan",
 			Apellido:        "Pérez",
 			Cuil:            cuil,
-			NumeroDoc:       "12345678",
-			TipoDoc:         "DNI",
+			NumeroDocumento: "12345678",
+			TipoDocumento:   "DNI",
 			Sexo:            "MASCULINO",
 			FechaNacimiento: "1990-01-01",
 			Provincia:       "CORDOBA",
-			Localidad:       "SAN AGUSTÍN",
+			Localidad:       "CIUDAD",
 			Direccion:       "CALLE FICTICIA 123",
 			EstadoCivil:     "SOLTERO/A",
 		}, nil
 	}
 
-	// Construir request SOAP
-	soapRequest := fmt.Sprintf(`<?xml version="1.0" encoding="utf-8"?>
-<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
-                  xmlns:ser="http://servicios.maestros2.idecor.cba.gov.ar/"
-                  xmlns:ns1="http://servicios.idecor.cba.gov.ar/"
-                  xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
-  <soapenv:Header>
-    <wsse:Security soapenv:mustUnderstand="1">
+	// Construir request SOAP conforme a la especificación y SoapUI
+	soapRequest := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
+               xmlns:ns="https://cba.gov.ar/Maestros/PersonaFisica/1.0.0"
+               xmlns:ns1="https://cba.gov.ar/Comunes/Encabezado/1.0.0"
+               xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+  <soap:Header>
+    <wsse:Security soap:mustUnderstand="1">
       <wsse:UsernameToken>
         <wsse:Username>%s</wsse:Username>
         <wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText">%s</wsse:Password>
       </wsse:UsernameToken>
     </wsse:Security>
-    <ns1:encabezado>
+    <ns:encabezado>
       <ns1:usuario>%s</ns1:usuario>
       <ns1:aplicacion>%s</ns1:aplicacion>
-    </ns1:encabezado>
-  </soapenv:Header>
-  <soapenv:Body>
-    <ser:buscarPersonaFisica>
-      <ser:cuil>%s</ser:cuil>
-    </ser:buscarPersonaFisica>
-  </soapenv:Body>
-</soapenv:Envelope>`, usuario, password, usuarioHeader, aplicacionHeader, cuil)
+    </ns:encabezado>
+  </soap:Header>
+  <soap:Body>
+    <ns:personaFisicaRequest>
+      <ns:cuil>%s</ns:cuil>
+    </ns:personaFisicaRequest>
+  </soap:Body>
+</soap:Envelope>`, usuario, password, appUser, appName, cuil)
 
-	fmt.Println("📤 XML Generado:")
-	fmt.Println(soapRequest)
-
-	// Crear y enviar request HTTP
+	// Envío de la petición HTTP
 	req, err := http.NewRequest("POST", endpoint, bytes.NewBufferString(soapRequest))
 	if err != nil {
-		return nil, fmt.Errorf("error creando request: %v", err)
+		return nil, fmt.Errorf("error creando request SOAP: %v", err)
 	}
 	req.Header.Set("Content-Type", "text/xml;charset=UTF-8")
 	req.Header.Set("SOAPAction", "")
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("error haciendo solicitud SOAP: %v", err)
+		return nil, fmt.Errorf("error ejecutando request SOAP: %v", err)
 	}
 	defer resp.Body.Close()
 
-	// Leer respuesta completa
+	// Leer respuesta SOAP
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("error leyendo respuesta SOAP: %v", err)
 	}
-	fmt.Println("📨 Respuesta SOAP:")
-	fmt.Println(string(body))
 
-	// Manejar fault de negocio
-	if bytes.Contains(body, []byte("<soap:Fault>")) {
-		var fault FaultEnvelope
-		if err := xml.Unmarshal(body, &fault); err == nil {
-			return nil, fmt.Errorf("error SOAP: %s", fault.Body.Fault.FaultString)
-		}
+	// Parsear sobre SOAP
+	var envelope soapEnvelope
+	if err := xml.Unmarshal(body, &envelope); err != nil {
+		return nil, fmt.Errorf("error parseando SOAP: %v", err)
+	}
+
+	// Manejo de fault de negocio
+	if envelope.Body.Fault != nil {
 		return nil, ErrPersonaNoEncontrada
 	}
 
-	// Parsear respuesta exitosa
-	var envelope Envelope
-	if err := xml.Unmarshal(body, &envelope); err != nil {
-		return nil, fmt.Errorf("error parseando XML SOAP: %v", err)
+	// Extraer datos de personaFisicaResponse
+	data := envelope.Body.Persona
+	if data.Cuil == "" {
+		return nil, ErrPersonaNoEncontrada
 	}
 
-	p := envelope.Body.BuscarPersonaFisicaResponse.Return
-
-	// Mapear a estructura de salida
+	// Mapear a Persona y devolver respuesta
 	return &Persona{
-		Nombre:          p.Nombre,
-		Apellido:        p.Apellido,
-		Cuil:            p.Cuil,
-		NumeroDoc:       p.NumeroDocumento,
-		TipoDoc:         p.TipoDoc,
-		Sexo:            p.Sexo.TipoSexo,
-		FechaNacimiento: p.FechaNacimiento,
-		Provincia:       p.Domicilio.Provincia,
-		Localidad:       p.Domicilio.Localidad,
-		Direccion:       p.Domicilio.Calle,
-		EstadoCivil:     p.EstadoCivil.NombreEstadoCivil,
+		Nombre:          data.Nombre,
+		Apellido:        data.Apellido,
+		Cuil:            data.Cuil,
+		NumeroDocumento: data.NumeroDocumento,
+		TipoDocumento:   data.TipoDocumento,
+		Sexo:            data.Sexo.TipoSexo,
+		FechaNacimiento: data.FechaNacimiento,
+		Provincia:       data.Domicilio.Provincia,
+		Localidad:       data.Domicilio.Localidad,
+		Direccion:       data.Domicilio.Calle,
+		EstadoCivil:     data.EstadoCivil.NombreEstadoCivil,
 	}, nil
 }
