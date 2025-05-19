@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Formulario de inscripción</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background-color: #f2f2f2;
+    }
+
+    nav {
+      background-color: #007bff;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    nav a {
+      color: white;
+      text-decoration: none;
+      margin: 5px 10px;
+      font-weight: bold;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 40px auto;
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    h2, h3 {
+      text-align: center;
+    }
+
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 8px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    table {
+      width: 100%;
+      margin-top: 30px;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #007bff;
+      color: white;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a href="index.html">Inicio</a>
+    <a href="formulario.html">Carga manual</a>
+    <a href="qr.html">Carga con QR</a>
+  </nav>
+
+  <div class="container">
+    <h2>Formulario de inscripción</h2>
+    <h3 id="cursoSeleccionado">Curso: </h3>
+
+    <label for="cuil">CUIL:</label>
+    <input type="text" id="cuil" placeholder="CUIL">
+    <button type="button" onclick="buscarPersona()">Buscar</button>
+
+    <label for="nombre">Nombre:</label>
+    <input type="text" id="nombre" placeholder="Nombre">
+
+    <label for="apellido">Apellido:</label>
+    <input type="text" id="apellido" placeholder="Apellido">
+
+    <button onclick="agregarInscripto()">Inscribirme</button>
+
+    <div class="actions">
+      <button onclick="descargarCSV()">Guardar como CSV</button>
+      <button onclick="borrarTabla()">Borrar tabla</button>
+    </div>
+
+    <table id="tablaInscriptos">
+      <thead>
+        <tr>
+          <th>CUIL</th>
+          <th>Nombre</th>
+          <th>Apellido</th>
+          <th>Curso</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script>
+    const curso = localStorage.getItem("curso");
+    if (!curso) {
+      alert("No se especificó un curso. Redirigiendo al inicio.");
+      window.location.href = "index.html";
+    }
+    document.getElementById("cursoSeleccionado").textContent += curso;
+
+    async function buscarPersona() {
+      const cuil = document.getElementById("cuil").value.trim();
+      if (!cuil) {
+        alert("Por favor, ingresá un CUIL.");
+        return;
+      }
+
+      try {
+        const response = await fetch("http://localhost:8080/verificar-persona", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cuil })
+        });
+
+        if (!response.ok) {
+          throw new Error("Persona no encontrada");
+        }
+
+        const data = await response.json();
+        document.getElementById("nombre").value = data.nombre || "";
+        document.getElementById("apellido").value = data.apellido || "";
+      } catch (err) {
+        alert("No se pudo encontrar la persona con ese CUIL");
+        document.getElementById("nombre").value = "";
+        document.getElementById("apellido").value = "";
+      }
+    }
+
+    function agregarInscripto() {
+      const cuil = document.getElementById("cuil").value.trim();
+      const nombre = document.getElementById("nombre").value.trim();
+      const apellido = document.getElementById("apellido").value.trim();
+
+      if (!cuil || !nombre || !apellido) {
+        alert("Por favor, completá todos los campos.");
+        return;
+      }
+
+      const tbody = document.querySelector("#tablaInscriptos tbody");
+      const fila = document.createElement("tr");
+      fila.innerHTML = `
+        <td>${cuil}</td>
+        <td>${nombre}</td>
+        <td>${apellido}</td>
+        <td>${curso}</td>
+      `;
+      tbody.appendChild(fila);
+
+      document.getElementById("cuil").value = "";
+      document.getElementById("nombre").value = "";
+      document.getElementById("apellido").value = "";
+    }
+
+    function descargarCSV() {
+      const rows = [...document.querySelectorAll("table tr")];
+      const csv = rows.map(row =>
+        [...row.children].map(cell => `"${cell.innerText}"`).join(",")
+      ).join("\n");
+
+      const blob = new Blob([csv], { type: "text/csv" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `inscriptos_${curso}.csv`;
+      link.click();
+    }
+
+    function borrarTabla() {
+      document.querySelector("#tablaInscriptos tbody").innerHTML = "";
+    }
+  </script>
+
+</body>
+</html>

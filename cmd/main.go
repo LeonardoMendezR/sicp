@@ -8,7 +8,6 @@ import (
 	"github.com/joho/godotenv"
 
 	"gobierno-inscripcion/routes"
-	"gobierno-inscripcion/services"
 )
 
 func main() {
@@ -17,21 +16,17 @@ func main() {
 		log.Println("No se pudo cargar el archivo .env, usando valores por defecto")
 	}
 
-	// Cargar cursos desde archivo CSV
-	if err := services.CargarCursosDesdeCSV("Cursos.csv"); err != nil {
-		log.Fatalf("Error al cargar cursos: %v", err)
-	}
+	
 
 	// Inicializar router Gin
 	router := gin.Default()
-
-	// Servir archivos estáticos (HTML, CSS, JS)
 	router.Static("/static", "./static")
 
-	// Ruta raíz que sirve index.html
+// Ruta raíz que carga index.html explícitamente
 	router.GET("/", func(c *gin.Context) {
 		c.File("./static/index.html")
 	})
+
 
 	// Registrar rutas de la API
 	routes.RegisterRoutes(router)
@@ -47,6 +42,4 @@ func main() {
 	if err := router.Run(":" + port); err != nil {
 		log.Fatal("No se pudo iniciar el servidor:", err)
 	}
-
-
 }

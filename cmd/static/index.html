@@ -1,114 +1,151 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>Inscribirse a un Curso</title>
-    <link rel="stylesheet" href="/static/style.css"> <!-- (opcional si movés estilos a un archivo) -->
-    <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        h1 { font-size: 2em; }
-        label, select, input, button { display: block; margin: 10px 0; }
-        table { width: 100%; border-collapse: collapse; margin-top: 30px; }
-        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; }
-    </style>
+  <meta charset="UTF-8">
+  <title>Inscripción a Cursos</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #f2f2f2;
+    }
+
+    nav {
+      background-color: #007bff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 20px;
+      flex-wrap: wrap;
+    }
+
+    nav a {
+      color: white;
+      text-decoration: none;
+      margin: 5px 10px;
+      font-weight: bold;
+    }
+
+    nav a:hover {
+      text-decoration: underline;
+    }
+
+    .container {
+      max-width: 500px;
+      background: white;
+      margin: 40px auto;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    select, button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 15px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 16px;
+    }
+
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    @media (max-width: 600px) {
+      nav {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      nav a {
+        margin: 5px 0;
+      }
+    }
+  </style>
 </head>
 <body>
-    <h1>Inscribirse a un Curso</h1>
+<nav>
+<a href="/static/index.html">Inicio</a>
+<a href="/static/formulario.html">Carga manual</a>
+<a href="/static/qr.html">Carga con QR</a>
+</nav>
+  <div class="container">
+    <h2>Seleccionar Curso</h2>
 
-    <label for="cursoSelect">Seleccione un curso:</label>
-    <select id="cursoSelect"></select>
+    <select id="selectCurso">
+      <option value="">Seleccione un curso</option>
+    </select>
 
-    <label for="cuilInput">Ingrese CUIL:</label>
-    <input type="text" id="cuilInput" placeholder="Ej: 20234567890" />
+    <button onclick="irFormulario()">Ir a inscripción manual</button>
+    <button onclick="irQR()">Ir a inscripción con QR</button>
+  </div>
 
-    <button onclick="inscribirPersona()">Inscribir</button>
+  <script>
+    const scriptUrl = "https://script.google.com/macros/s/AKfycbwwz4fV0ZNHlEMzrHtpDOiwjnCfCFaqYmCuF88Yv3VZ4WXqSjcaSo2cPLoh2x24q1Qi/exec";
 
-    <h2>Personas Inscriptas</h2>
-    <table id="tablaInscriptos">
-        <thead>
-            <tr>
-                <th>CUIL</th>
-                <th>Nombre</th>
-                <th>Apellido</th>
-                <th>Email</th>
-                <th>Curso</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
+    function cargarCursos() {
+      fetch(`${scriptUrl}?tipo=getCursos`)
+        .then(response => response.json())
+        .then(cursos => {
+          const select = document.getElementById("selectCurso");
+          cursos.forEach(curso => {
+            const option = document.createElement("option");
+            option.value = curso;
+            option.textContent = curso;
+            select.appendChild(option);
+          });
+        })
+        .catch(error => {
+          console.error("Error al cargar cursos:", error);
+          alert("No se pudieron cargar los cursos.");
+        });
+    }
 
-    <script src="/static/script.js"></script> <!-- si movés el JS -->
-    <script>
-        let cursos = [];
+    function getCursoSeleccionado() {
+      const curso = document.getElementById("selectCurso").value;
+      if (!curso) {
+        alert("Por favor, seleccioná un curso primero.");
+        return null;
+      }
+      localStorage.setItem("curso", curso);
+      return curso;
+    }
 
-        async function cargarCursos() {
-            try {
-                const res = await fetch('/cursos');
-                cursos = await res.json();
-                const select = document.getElementById('cursoSelect');
-                cursos.forEach(curso => {
-                    const option = document.createElement('option');
-                    option.value = curso.id;
-                    option.textContent = curso.nombre;
-                    select.appendChild(option);
-                });
-            } catch (err) {
-                console.error('Error al cargar cursos:', err);
-            }
-        }
+    function irFormulario() {
+      const curso = getCursoSeleccionado();
+      if (curso) {
+        window.location.href = "formulario.html";
+      }
+      return false;
+    }
 
-        async function cargarInscriptos() {
-            try {
-                const res = await fetch('/inscriptos');
-                const data = await res.json();
-                const tbody = document.querySelector('#tablaInscriptos tbody');
-                tbody.innerHTML = '';
+    function irQR() {
+      const curso = getCursoSeleccionado();
+      if (curso) {
+        window.location.href = "qr.html";
+      }
+      return false;
+    }
 
-                data.forEach(p => {
-                    const curso = cursos.find(c => c.id === p.curso_id);
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${p.cuil}</td>
-                        <td>${p.nombre}</td>
-                        <td>${p.apellido}</td>
-                        <td>${p.email}</td>
-                        <td>${curso ? curso.nombre : 'Curso no encontrado'}</td>
-                    `;
-                    tbody.appendChild(row);
-                });
-            } catch (err) {
-                console.error('Error al cargar inscriptos:', err);
-            }
-        }
+    window.onload = cargarCursos;
+  </script>
 
-        async function inscribirPersona() {
-            const cuil = document.getElementById('cuilInput').value;
-            const cursoID = document.getElementById('cursoSelect').value;
-
-            try {
-                const res = await fetch('/inscribir-persona', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ cuil, curso_id: cursoID })
-                });
-
-                const result = await res.json();
-
-                if (res.ok) {
-                    alert(result.message);
-                    cargarInscriptos();
-                } else {
-                    alert(result.error || 'Ocurrió un error');
-                }
-            } catch (err) {
-                alert('Error al inscribir persona');
-                console.error(err);
-            }
-        }
-
-        // Al iniciar
-        cargarCursos().then(cargarInscriptos);
-    </script>
 </body>
 </html>

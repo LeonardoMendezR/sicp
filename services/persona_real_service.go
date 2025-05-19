@@ -13,7 +13,6 @@ import (
 // ErrPersonaNoEncontrada se devuelve cuando el servicio no encuentra datos de la persona
 var ErrPersonaNoEncontrada = errors.New("persona no encontrada")
 
-// Persona representa los datos que vamos a devolver al cliente
 type Persona struct {
 	Nombre          string `json:"nombre"`
 	Apellido        string `json:"apellido"`
@@ -29,39 +28,40 @@ type Persona struct {
 }
 
 type soapEnvelope struct {
-	XMLName xml.Name `xml:"Envelope"`
+	XMLName xml.Name `xml:"http://schemas.xmlsoap.org/soap/envelope/ Envelope"`
 	Body    struct {
-		Persona personaData `xml:"Body>personaFisicaResponse"`
-		Fault   *soapFault  `xml:"Body>Fault"`
-	} `xml:"Envelope"`
+		Response struct {
+			XMLName xml.Name `xml:"https://cba.gov.ar/Maestros/PersonaFisica/1.0.0 personaFisicaResponse"`
+
+			Nombre           string `xml:"https://cba.gov.ar/Maestros/PersonaFisica/1.0.0 nombre"`
+			Apellido         string `xml:"https://cba.gov.ar/Maestros/PersonaFisica/1.0.0 apellido"`
+			Cuil             string `xml:"https://cba.gov.ar/Maestros/PersonaFisica/1.0.0 cuil"`
+			NumeroDocumento  string `xml:"https://cba.gov.ar/Maestros/PersonaFisica/1.0.0 numeroDocumento"`
+			TipoDocumento    string `xml:"https://cba.gov.ar/Maestros/PersonaFisica/1.0.0 idTipoDocumento"`
+			Sexo struct {
+				Tipo string `xml:"https://cba.gov.ar/Maestros/PersonaFisica/1.0.0 tipoSexo"`
+			} `xml:"https://cba.gov.ar/Maestros/PersonaFisica/1.0.0 sexo"`
+			FechaNacimiento string `xml:"https://cba.gov.ar/Maestros/PersonaFisica/1.0.0 fecNacimiento"`
+			Domicilio struct {
+				Provincia string `xml:"https://cba.gov.ar/Maestros/PersonaFisica/1.0.0 provincia"`
+				Localidad string `xml:"https://cba.gov.ar/Maestros/PersonaFisica/1.0.0 localidad"`
+				Calle     string `xml:"https://cba.gov.ar/Maestros/PersonaFisica/1.0.0 calle"`
+			} `xml:"https://cba.gov.ar/Maestros/PersonaFisica/1.0.0 domicilio"`
+			EstadoCivil struct {
+				Nombre string `xml:"https://cba.gov.ar/Maestros/PersonaFisica/1.0.0 nombreEstadoCivil"`
+			} `xml:"https://cba.gov.ar/Maestros/PersonaFisica/1.0.0 estadoCivil"`
+		} `xml:"https://cba.gov.ar/Maestros/PersonaFisica/1.0.0 personaFisicaResponse"`
+
+		Fault *struct {
+			Code   string `xml:"faultcode"`
+			String string `xml:"faultstring"`
+		} `xml:"Fault"`
+	} `xml:"http://schemas.xmlsoap.org/soap/envelope/ Body"`
 }
 
-type personaData struct {
-	Nombre          string `xml:"nombre"`
-	Apellido        string `xml:"apellido"`
-	Cuil            string `xml:"cuil"`
-	NumeroDocumento string `xml:"numeroDocumento"`
-	TipoDocumento   string `xml:"idTipoDocumento"`
-	Sexo struct {
-		TipoSexo string `xml:"tipoSexo"`
-	} `xml:"sexo"`
-	FechaNacimiento string `xml:"fecNacimiento"`
-	Domicilio struct {
-		Provincia string `xml:"provincia"`
-		Localidad string `xml:"localidad"`
-		Calle     string `xml:"calle"`
-	} `xml:"domicilio"`
-	EstadoCivil struct {
-		NombreEstadoCivil string `xml:"nombreEstadoCivil"`
-	} `xml:"estadoCivil"`
-}
 
-type soapFault struct {
-	Code   string `xml:"faultcode"`
-	String string `xml:"faultstring"`
-}
 
-// ConsultarPersonaPorCUIL invoca el servicio SOAP de PersonaFisica por CUIL
+
 func ConsultarPersonaPorCUIL(cuil string) (*Persona, error) {
 	endpoint := os.Getenv("SOAP_ENDPOINT")
 	usuario := os.Getenv("SOAP_USER")
@@ -70,10 +70,6 @@ func ConsultarPersonaPorCUIL(cuil string) (*Persona, error) {
 	appName := os.Getenv("SOAP_APLICACION_HEADER")
 	soapAction := os.Getenv("SOAP_ACTION")
 	useMock := os.Getenv("USE_MOCK")
-
-	if endpoint == "" || usuario == "" || password == "" || appUser == "" || appName == "" || soapAction == "" {
-		return nil, errors.New("falta configuración en variables de entorno")
-	}
 
 	if useMock == "true" {
 		return &Persona{
@@ -85,74 +81,72 @@ func ConsultarPersonaPorCUIL(cuil string) (*Persona, error) {
 			Sexo:            "MASCULINO",
 			FechaNacimiento: "1990-01-01",
 			Provincia:       "CORDOBA",
-			Localidad:       "CIUDAD",
+			Localidad:       "SAN AGUSTÍN",
 			Direccion:       "CALLE FICTICIA 123",
 			EstadoCivil:     "SOLTERO/A",
 		}, nil
 	}
 
-	s := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
-               xmlns:ns="https://cba.gov.ar/Maestros/PersonaFisica/1.0.0"
-               xmlns:ns1="https://cba.gov.ar/Comunes/Encabezado/1.0.0"
-               xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
-  <soap:Header>
-    <wsse:Security soap:mustUnderstand="1">
+	soapRequest := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" 
+                  xmlns:ns="https://cba.gov.ar/Maestros/PersonaFisica/1.0.0" 
+                  xmlns:ns1="https://cba.gov.ar/Comunes/Encabezado/1.0.0">
+  <soapenv:Header>
+    <wsse:Security soapenv:mustUnderstand="1" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
       <wsse:UsernameToken>
         <wsse:Username>%s</wsse:Username>
         <wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText">%s</wsse:Password>
       </wsse:UsernameToken>
     </wsse:Security>
-  </soap:Header>
-  <soap:Body>
+  </soapenv:Header>
+  <soapenv:Body>
     <ns:personaFisicaRequest>
       <ns:encabezado>
         <ns1:usuario>%s</ns1:usuario>
-        <ns1:token></ns1:token>
-        <ns1:sign></ns1:sign>
+        <ns1:token>?</ns1:token>
+        <ns1:sign>?</ns1:sign>
         <ns1:aplicacion>%s</ns1:aplicacion>
       </ns:encabezado>
       <ns:cuil>%s</ns:cuil>
     </ns:personaFisicaRequest>
-  </soap:Body>
-</soap:Envelope>`, usuario, password, appUser, appName, cuil)
+  </soapenv:Body>
+</soapenv:Envelope>`, usuario, password, appUser, appName, cuil)
+
 
 	fmt.Println("📤 XML SOAP enviado:")
-	fmt.Println(s)
+	fmt.Println(soapRequest)
 
-	req, err := http.NewRequest("POST", endpoint, bytes.NewBufferString(s))
+	req, err := http.NewRequest("POST", endpoint, bytes.NewBufferString(soapRequest))
 	if err != nil {
-		return nil, fmt.Errorf("error creando request SOAP: %v", err)
+		return nil, fmt.Errorf("error creando request: %v", err)
 	}
 	req.Header.Set("Content-Type", "text/xml;charset=UTF-8")
 	req.Header.Set("SOAPAction", soapAction)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("error ejecutando request SOAP: %v", err)
+		return nil, fmt.Errorf("error en request SOAP: %v", err)
 	}
 	defer resp.Body.Close()
 
-	fmt.Println("🛰️ Status HTTP:", resp.StatusCode)
-	fmt.Println("📩 Headers de respuesta:", resp.Header)
-
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("error leyendo respuesta SOAP: %v", err)
+		return nil, fmt.Errorf("error leyendo respuesta: %v", err)
 	}
+
 	fmt.Println("📨 Body SOAP crudo:")
 	fmt.Println(string(body))
 
-	var env soapEnvelope
-	if err := xml.Unmarshal(body, &env); err != nil {
-		return nil, fmt.Errorf("error parseando SOAP: %v", err)
+	var envelope soapEnvelope
+	if err := xml.Unmarshal(body, &envelope); err != nil {
+		return nil, fmt.Errorf("error parseando XML: %v", err)
 	}
 
-	if env.Body.Fault != nil {
-		return nil, ErrPersonaNoEncontrada
+	if envelope.Body.Fault != nil {
+		return nil, fmt.Errorf("SOAP fault: %s", envelope.Body.Fault.String)
 	}
 
-	p := env.Body.Persona
+	p := envelope.Body.Response
 	if p.Cuil == "" {
 		return nil, ErrPersonaNoEncontrada
 	}
@@ -163,11 +157,11 @@ func ConsultarPersonaPorCUIL(cuil string) (*Persona, error) {
 		Cuil:            p.Cuil,
 		NumeroDocumento: p.NumeroDocumento,
 		TipoDocumento:   p.TipoDocumento,
-		Sexo:            p.Sexo.TipoSexo,
+		Sexo:            p.Sexo.Tipo,
 		FechaNacimiento: p.FechaNacimiento,
 		Provincia:       p.Domicilio.Provincia,
 		Localidad:       p.Domicilio.Localidad,
 		Direccion:       p.Domicilio.Calle,
-		EstadoCivil:     p.EstadoCivil.NombreEstadoCivil,
+		EstadoCivil:     p.EstadoCivil.Nombre,
 	}, nil
 }

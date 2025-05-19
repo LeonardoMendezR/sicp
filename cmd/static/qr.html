@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Generar QR para Inscripción</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.0/build/qrcode.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f2f2f2;
+      margin: 0;
+    }
+
+    nav {
+      background-color: #007bff;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    nav a {
+      color: white;
+      text-decoration: none;
+      margin: 5px 10px;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 40px auto;
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+
+    h2 {
+      color: #333;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    button {
+      padding: 12px 20px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    canvas {
+      margin-top: 20px;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        margin: 20px;
+        padding: 15px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a href="/static/index.html">Inicio</a>
+    <a href="/static/formulario.html">Carga manual</a>
+    <a href="/static/qr.html">Generar QR</a>
+  </nav>
+
+  <div class="container">
+    <h2>Generar QR para inscripción</h2>
+    <input type="text" id="cuil" placeholder="Ingresá el CUIL">
+    <select id="curso">
+      <option value="">Seleccioná un curso</option>
+      <option value="Programa Jóvenes al Volante">Programa Jóvenes al Volante</option>
+      <option value="Teletrabajo">Teletrabajo</option>
+      <option value="Introducción a Word">Introducción a Word</option>
+      <option value="Introducción a Excel">Introducción a Excel</option>
+    </select>
+    <button onclick="generarQR()">Generar QR</button>
+    <div id="qrcode"></div>
+  </div>
+
+  <script>
+    function generarQR() {
+      const cuil = document.getElementById("cuil").value.trim();
+      const curso = document.getElementById("curso").value;
+
+      if (!cuil || !curso) {
+        alert("Por favor, completá el CUIL y seleccioná un curso.");
+        return;
+      }
+
+      const url = `http://localhost:8080/static/formulario.html?cuil=${encodeURIComponent(cuil)}&curso=${encodeURIComponent(curso)}`;
+      QRCode.toCanvas(document.getElementById('qrcode'), url, { width: 250 }, function (error) {
+        if (error) console.error(error);
+      });
+    }
+  </script>
+
+</body>
+</html>
