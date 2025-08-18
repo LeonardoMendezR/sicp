@@ -1,0 +1,32 @@
+import axios from 'axios';
+import { useEffect, useState } from 'react';
+
+const App = () => {
+  const [data, setData] = useState([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await axios.get('http://localhost:5000/api/endpoint'); // Cambia la URL según tu backend
+        setData(response.data);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  return (
+    <div>
+      <h1>Datos desde el Backend</h1>
+      <ul>
+        {data.map(item => (
+          <li key={item.id}>{item.name}</li> // Ajusta según la estructura de tus datos
+        ))}
+      </ul>
+    </div>
+  );
+};
+
+export default App;

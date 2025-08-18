@@ -1,0 +1,14 @@
+// Ejemplo de una solicitud GET
+fetch('http://localhost:5000/api/endpoint') // Cambia la URL según tu configuración
+  .then(response => {
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+    return response.json();
+  })
+  .then(data => {
+    console.log(data); // Maneja los datos recibidos
+  })
+  .catch(error => {
+    console.error('Hubo un problema con la solicitud:', error);
+  });
